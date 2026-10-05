@@ -1,0 +1,12 @@
+/Library
+/Logs
+/Temp
+/UserSettings
+/obj
+/.idea
+
+
+
+.vsconfig
+.vs/
+.vscode/
