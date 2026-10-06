@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using System.Net.Sockets;
 using UnityEngine;
@@ -22,6 +23,10 @@ namespace GeneralClientFramework
         static ByteArray readBuff;
         // 写入队列
         static Queue<ByteArray> writeQueue;
+
+
+        // 是否正在连接
+        static bool isConnecting = false;
 
         // 事件委托类型
         public delegate void EventListener(string err);
@@ -64,6 +69,61 @@ namespace GeneralClientFramework
             {
                 eventListeners[netEvent](err);
             }
+        }
+
+        // 连接
+        public static void Connect(string ip, int port)
+        {
+            // 判断状态
+            if (socket != null && socket.Connected)
+            {
+                Debug.Log("Connect fail, already connected");
+                return;
+            }
+            if (isConnecting)
+            {
+                Debug.Log("Connect fail, isConnecting");
+                return;
+            }
+            // 初始化成员
+            InitState();
+            // 参数设置
+            socket.NoDelay = true;     // 不使用Nagle算法，不将小数据量的tcp整合为一个大的再发送
+            // connect
+            isConnecting = true;
+            socket.BeginConnect(ip, port, ConnectCallback, socket);
+        }
+
+        // 重置缓冲区，防止客户端再次重连时读取到上一次还未处理的readbuff数据
+        private static void InitState()
+        {
+            // Socket
+            socket = new Socket(AddressFamily.InterNetwork, SocketType.Stream, ProtocolType.Tcp);
+            // 接收缓冲区
+            readBuff = new ByteArray();
+            // 写入队列
+            writeQueue = new Queue<ByteArray>();
+            // 重置连接状态
+            isConnecting = false;
+        }
+
+        private static void ConnectCallback(IAsyncResult ar)
+        {
+            try
+            {
+                Socket socket = (Socket)ar.AsyncState;
+                socket.EndConnect(ar);
+                Debug.Log("Socket Connect success");
+                FireEvent(NetEvent.ConnectSucc, "");
+                isConnecting = false;
+            }
+            catch (SocketException ex)
+            {
+                Debug.Log($"Socket connect fail, {ex.Message}");
+                FireEvent(NetEvent.ConnectFail, ex.Message);
+                isConnecting = false;
+            }
+
         }
     }
 }
