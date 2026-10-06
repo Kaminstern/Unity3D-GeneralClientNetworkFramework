@@ -1,5 +1,7 @@
+using JetBrains.Annotations;
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net.Sockets;
 using UnityEngine;
 
@@ -73,6 +75,51 @@ namespace GeneralClientFramework
             }
         }
 
+
+
+        // 消息委托类型
+        public delegate void MsgListener(MsgBase msgBase);
+
+        // 消息监听列表
+        public static Dictionary<string, MsgListener> msgListeners = new Dictionary<string, MsgListener>();
+
+        // 添加消息监听
+        public static void AddMsgListener(string name, MsgListener listener)
+        {
+            // 添加
+            if (msgListeners.ContainsKey(name))
+            {
+                msgListeners[name] += listener;
+            }
+            // 新增
+            else
+            {
+                msgListeners[name] = listener;
+            }
+        }
+
+        // 删除消息监听
+        public static void RemoveMsgListener(string name, MsgListener listener)
+        {
+            if (msgListeners.ContainsKey(name))
+            {
+                msgListeners[name] -= listener;
+                if (msgListeners[name] == null)
+                {
+                    msgListeners.Remove(name);
+                }
+            }
+        }
+
+        // 分发消息
+        public static void FireMsg(string name, MsgBase msg)
+        {
+            if(msgListeners.ContainsKey(name))
+            {
+                msgListeners[name](msg);
+            }
+        }
+
         // 连接
         public static void Connect(string ip, int port)
         {
@@ -134,7 +181,7 @@ namespace GeneralClientFramework
         public static void Close()
         {
             // 判断状态
-            if(socket == null || !socket.Connected)
+            if (socket == null || !socket.Connected)
             {
                 return;
             }
@@ -142,7 +189,7 @@ namespace GeneralClientFramework
             {
                 return;
             }
-            if(writeQueue.Count > 0)
+            if (writeQueue.Count > 0)
             {
                 isClosing = true;
             }
@@ -151,6 +198,82 @@ namespace GeneralClientFramework
                 socket.Close();
                 // 分发连接关闭的事件
                 FireEvent(NetEvent.Cloas, "");
+            }
+        }
+
+        // 发送数据
+        public static void Send(MsgBase msg)
+        {
+            // 判断状态
+            if (socket == null || !socket.Connected)
+            {
+                return;
+            }
+            if (isClosing || isConnecting)
+            {
+                return;
+            }
+            // 数据编码
+            byte[] nameBytes = MsgBase.EncodeName(msg);
+            byte[] bodyBytes = MsgBase.Ecode(msg);
+            int len = nameBytes.Length + bodyBytes.Length;
+            byte[] sendBytes = new byte[2 + len];
+            // 组装数据
+            sendBytes[0] = (byte)(len % 256);
+            sendBytes[1] = (byte)(len / 256);
+            Array.Copy(nameBytes, 0, sendBytes, 2, nameBytes.Length);
+            Array.Copy(bodyBytes, 0, sendBytes, 2 + nameBytes.Length, bodyBytes.Length);
+            // 写入队列
+            ByteArray ba = new ByteArray(sendBytes);
+            int count = 0;      // writeQueue的长度
+            lock (writeQueue)
+            {
+                writeQueue.Enqueue(ba);
+                count = writeQueue.Count;
+            }
+            // send
+            if (count == 1)
+            {
+                socket.BeginSend(sendBytes, 0, sendBytes.Length, 0, SendCallback, socket);
+            }
+        }
+
+        public static void SendCallback(IAsyncResult ar)
+        {
+            // 获取state、EndSend的处理
+            Socket socket = ar.AsyncState as Socket;
+            // 判断状态
+            if (socket == null || !socket.Connected)
+            {
+                return;
+            }
+            int count = socket.EndSend(ar);
+            // 获取写入队列第一条数据
+            ByteArray ba;
+            lock (writeQueue)
+            {
+                ba = writeQueue.First();
+            }
+
+            // 完整发送
+            ba.readIdx += count;
+            if( ba.length ==0)
+            {
+                lock (writeQueue)
+                {
+                    writeQueue.Dequeue();
+                    ba = writeQueue.First();
+                }
+            }
+            // 继续发送
+            if(ba != null)
+            {
+                socket.BeginSend(ba.bytes, ba.readIdx, ba.length, 0, SendCallback, socket);
+            }
+            // 正在关闭
+            else if(isClosing)
+            {
+                socket.Close();
             }
         }
     }

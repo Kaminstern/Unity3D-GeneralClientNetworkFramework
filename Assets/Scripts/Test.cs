@@ -1,3 +1,4 @@
+using System.Security.Cryptography;
 using UnityEngine;
 
 namespace GeneralClientFramework
@@ -10,6 +11,7 @@ namespace GeneralClientFramework
             NetManager.AddEventListener(NetEvent.ConnectSucc, OnConnectSucc);
             NetManager.AddEventListener(NetEvent.ConnectFail, OnConnectFail);
             NetManager.AddEventListener(NetEvent.Cloas, OnConnectClose);
+            NetManager.AddMsgListener("MsgMove", OnMsgMove);
 
         }
 
@@ -32,6 +34,16 @@ namespace GeneralClientFramework
             NetManager.Close();
         }
 
+        // 测试msgmove
+        public void OnMoveClick()
+        {
+            MsgMove msgMove = new MsgMove();
+            msgMove.x = 120;
+            msgMove.y = 10;
+            msgMove.z = -5;
+            NetManager.Send(msgMove);
+        }
+
         // 连接成功回调
         void OnConnectSucc(string err)
         {
@@ -48,6 +60,16 @@ namespace GeneralClientFramework
         void OnConnectClose(string err)
         {
             Debug.Log("OnConnectClose");
+        }
+
+        // 接收OnMsgMove协议
+        public void OnMsgMove(MsgBase msgBase)
+        {
+            MsgMove msg = msgBase as MsgMove;
+            // 消息处理
+            Debug.Log($"OnMsgMove msg.x = {msg.x}");
+            Debug.Log($"OnMsgMove msg.y = {msg.y}");
+            Debug.Log($"OnMsgMove msg.z = {msg.z}");
         }
     }
 }

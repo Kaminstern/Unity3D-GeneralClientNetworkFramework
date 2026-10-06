@@ -54,10 +54,10 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Scripts\Proto\MsgAttack.cs" />
-    <Compile Include="Assets\Scripts\Proto\MsgMove.cs" />
     <Compile Include="Assets\Scripts\Framework\MsgBase.cs" />
     <Compile Include="Assets\Scripts\Framework\NetManager.cs" />
     <Compile Include="Assets\Scripts\Framework\ByteArray.cs" />
+    <Compile Include="Assets\Scripts\Proto\MsgMove.cs" />
     <Compile Include="Assets\Scripts\Test.cs" />
   </ItemGroup>
   <ItemGroup>
