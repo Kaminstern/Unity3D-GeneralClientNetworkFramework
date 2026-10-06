@@ -26,6 +26,12 @@ namespace GeneralClientFramework
             // TODO:开始转圈，提示“连接中”
         }
 
+        // 主动关闭
+        public void OnCloseClick()
+        {
+            NetManager.Close();
+        }
+
         // 连接成功回调
         void OnConnectSucc(string err)
         {

@@ -27,6 +27,8 @@ namespace GeneralClientFramework
 
         // 是否正在连接
         static bool isConnecting = false;
+        // 是否正在关闭
+        static bool isClosing = false;
 
         // 事件委托类型
         public delegate void EventListener(string err);
@@ -105,6 +107,8 @@ namespace GeneralClientFramework
             writeQueue = new Queue<ByteArray>();
             // 重置连接状态
             isConnecting = false;
+            // 是否正在关闭
+            isClosing = false;
         }
 
         private static void ConnectCallback(IAsyncResult ar)
@@ -124,6 +128,30 @@ namespace GeneralClientFramework
                 isConnecting = false;
             }
 
+        }
+
+        // 关闭连接
+        public static void Close()
+        {
+            // 判断状态
+            if(socket == null || !socket.Connected)
+            {
+                return;
+            }
+            if (isConnecting)
+            {
+                return;
+            }
+            if(writeQueue.Count > 0)
+            {
+                isClosing = true;
+            }
+            else
+            {
+                socket.Close();
+                // 分发连接关闭的事件
+                FireEvent(NetEvent.Cloas, "");
+            }
         }
     }
 }
