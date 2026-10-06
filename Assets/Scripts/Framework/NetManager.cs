@@ -362,10 +362,46 @@ namespace GeneralClientFramework
             }
         }
 
-        // Update
+        // 更新消息
         public static void MsgUpdate()
         {
+            // 做初步判断
+            if(msgCount == 0)
+            {
+                return;
+            }
+            // 重复处理消息
+            for(int i = 0; i < MAX_MESSAGE_FIRE; i++)
+            {
+                // 获取第一条消息
+                MsgBase msgBase = null;
+                lock (msgList)
+                {
+                    if(msgList.Count > 0)
+                    {
+                        msgBase = msgList[0];
+                        Debug.Log($"msgBase {msgBase.ToString()}");
+                        msgList.RemoveAt(0);
+                        msgCount--;
+                    }
+                }
+                // 分发消息
+                if(msgBase != null)
+                {
+                    FireMsg(msgBase.protoName, msgBase);
+                }
+                // 没有消息了
+                else
+                {
+                    break;
+                }
+            }
+        }
 
+        // Update
+        public static void Update()
+        {
+            MsgUpdate();
         }
     }
 }

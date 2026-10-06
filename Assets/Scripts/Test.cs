@@ -18,7 +18,7 @@ namespace GeneralClientFramework
         // Update is called once per frame
         void Update()
         {
-
+            NetManager.Update();
         }
 
         // 玩家点击连接按钮
