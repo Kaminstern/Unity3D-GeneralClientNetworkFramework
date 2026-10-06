@@ -32,6 +32,14 @@ namespace GeneralClientFramework
         // 是否正在关闭
         static bool isClosing = false;
 
+        // 消息列表
+        static List<MsgBase> msgList = new List<MsgBase>();
+        // 消息列表长度
+        static int msgCount = 0;
+        // 每次Update时处理的消息量
+        readonly static int MAX_MESSAGE_FIRE = 10;
+
+
         // 事件委托类型
         public delegate void EventListener(string err);
 
@@ -156,6 +164,8 @@ namespace GeneralClientFramework
             isConnecting = false;
             // 是否正在关闭
             isClosing = false;
+            msgList = new List<MsgBase>();
+            msgCount = 0;
         }
 
         private static void ConnectCallback(IAsyncResult ar)
@@ -167,6 +177,8 @@ namespace GeneralClientFramework
                 Debug.Log("Socket Connect success");
                 FireEvent(NetEvent.ConnectSucc, "");
                 isConnecting = false;
+                // 开始接收数据
+                socket.BeginReceive(readBuff.bytes, readBuff.writeIdx, readBuff.remain, 0, ReceiveCallback, socket);
             }
             catch (SocketException ex)
             {
@@ -174,8 +186,81 @@ namespace GeneralClientFramework
                 FireEvent(NetEvent.ConnectFail, ex.Message);
                 isConnecting = false;
             }
-
         }
+
+        private static void ReceiveCallback(IAsyncResult ar)
+        {
+            try
+            {
+                Socket socket = ar.AsyncState as Socket;
+                int count = socket.EndReceive(ar);
+                if(count == 0)
+                {
+                    Close();
+                    return;
+                }
+                readBuff.writeIdx += count;
+                // 处理二进制
+                OnReceiveData();
+                // 继续接收数据
+                if(readBuff.remain < 8)
+                {
+                    readBuff.MoveBytes();
+                    readBuff.ReSize(readBuff.length * 2);
+                }
+                socket.BeginReceive(readBuff.bytes, readBuff.writeIdx, readBuff.remain, 0, ReceiveCallback, socket);
+            }
+            catch(SocketException ex)
+            {
+                Debug.Log($"Socket Receive fail: {ex.Message}");
+                Debug.Log($"Socket Receive fail: {ex.Message}");
+            }
+        }
+
+        // 处理数据
+        private static void OnReceiveData()
+        {
+            // 消息长度
+            if(readBuff.length <=2)
+            {
+                return;
+            }
+            // 获取消息体长度
+            int readIdx = readBuff.readIdx;
+            byte[] bytes = readBuff.bytes;
+            Int16 bodyLength = (Int16)(bytes[readIdx] | bytes[readIdx] << 8);
+            if(bodyLength + 2 > readBuff.length)
+            {
+                return;
+            }
+            readBuff.readIdx += 2;
+            // 解析协议名
+            int nameCount = 0;
+            string protoName = MsgBase.DecodeName(readBuff.bytes, readBuff.readIdx, out nameCount);
+            if (protoName == null)
+            {
+                Debug.Log("OnReceiveData MsgBase.DecodeName fail");
+                return;
+            }
+            readBuff.readIdx += nameCount;
+            // 解析协议体
+            int bodyCount = bodyLength - nameCount;
+            MsgBase msg = MsgBase.Decode(protoName, readBuff.bytes, readBuff.readIdx, bodyCount);
+            readBuff.readIdx += bodyCount;
+            readBuff.CheckAndMoveBytes();
+            // 将接收到的内容放到消息队列中
+            lock (msgList)
+            {
+                msgList.Add(msg);
+            }
+            msgCount++;
+            // 继续读消息
+            if(readBuff.length > 2)
+            {
+                OnReceiveData();
+            }
+        }
+
 
         // 关闭连接
         public static void Close()
@@ -275,6 +360,12 @@ namespace GeneralClientFramework
             {
                 socket.Close();
             }
+        }
+
+        // Update
+        public static void MsgUpdate()
+        {
+
         }
     }
 }
