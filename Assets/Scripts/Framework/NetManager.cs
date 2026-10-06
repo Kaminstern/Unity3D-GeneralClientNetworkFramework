@@ -213,7 +213,6 @@ namespace GeneralClientFramework
             catch(SocketException ex)
             {
                 Debug.Log($"Socket Receive fail: {ex.Message}");
-                Debug.Log($"Socket Receive fail: {ex.Message}");
             }
         }
 
@@ -221,15 +220,15 @@ namespace GeneralClientFramework
         private static void OnReceiveData()
         {
             // 消息长度
-            if(readBuff.length <=2)
+            if (readBuff.length <= 2)
             {
                 return;
             }
             // 获取消息体长度
             int readIdx = readBuff.readIdx;
             byte[] bytes = readBuff.bytes;
-            Int16 bodyLength = (Int16)(bytes[readIdx] | bytes[readIdx] << 8);
-            if(bodyLength + 2 > readBuff.length)
+            Int16 bodyLength = (Int16)(bytes[readIdx] | bytes[readIdx + 1] << 8);
+            if (bodyLength + 2 > readBuff.length)
             {
                 return;
             }
@@ -300,7 +299,7 @@ namespace GeneralClientFramework
             }
             // 数据编码
             byte[] nameBytes = MsgBase.EncodeName(msg);
-            byte[] bodyBytes = MsgBase.Ecode(msg);
+            byte[] bodyBytes = MsgBase.Encode(msg);
             int len = nameBytes.Length + bodyBytes.Length;
             byte[] sendBytes = new byte[2 + len];
             // 组装数据

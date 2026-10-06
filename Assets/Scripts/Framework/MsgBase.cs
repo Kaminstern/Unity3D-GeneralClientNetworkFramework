@@ -10,7 +10,7 @@ namespace GeneralClientFramework
         public string protoName = "";
 
         // 编码
-        public static byte[] Ecode(MsgBase msg)
+        public static byte[] Encode(MsgBase msg)
         {
             string s = JsonUtility.ToJson(msg);
             return System.Text.Encoding.UTF8.GetBytes(s);
@@ -61,7 +61,7 @@ namespace GeneralClientFramework
             }
             // 解析
             count = 2 + len;  // 协议名信息的字节数，包括前面计数的2个字节和协议名所占字节
-            string name = System.Text.Encoding.UTF8.GetString(bytes, offset + 2, count);
+            string name = System.Text.Encoding.UTF8.GetString(bytes, offset + 2, len);
             return name;
         }
     }
