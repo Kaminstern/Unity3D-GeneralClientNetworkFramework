@@ -20,7 +20,9 @@ namespace GeneralClientFramework
         public static MsgBase Decode(string protoName, byte[] bytes, int offset, int count)
         {
             string s = System.Text.Encoding.UTF8.GetString(bytes, offset, count);
-            MsgBase msg = (MsgBase)JsonUtility.FromJson(s, Type.GetType(protoName));
+            Debug.Log($"s = {s}");
+            // Type.GetType返回的是全量名的结果，所以传递的是全量名，包括了命名空间
+            MsgBase msg = (MsgBase)JsonUtility.FromJson(s, Type.GetType($"GeneralClientFramework.{protoName}"));
             return msg;
         }
 
