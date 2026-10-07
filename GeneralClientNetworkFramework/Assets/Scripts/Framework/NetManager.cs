@@ -1,9 +1,10 @@
-using JetBrains.Annotations;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Sockets;
 using UnityEngine;
+using proto.BattleMsg;
+using proto.SysMsg;
 
 namespace GeneralClientFramework
 {
@@ -33,7 +34,7 @@ namespace GeneralClientFramework
         static bool isClosing = false;
 
         // 消息列表
-        static List<MsgBase> msgList = new List<MsgBase>();
+        static List<ProtoBuf.IExtensible> msgList = new List<ProtoBuf.IExtensible>();
         // 消息列表长度
         static int msgCount = 0;
         // 每次Update时处理的消息量
@@ -95,7 +96,7 @@ namespace GeneralClientFramework
 
 
         // 消息委托类型
-        public delegate void MsgListener(MsgBase msgBase);
+        public delegate void MsgListener(ProtoBuf.IExtensible msgBase);
 
         // 消息监听列表
         public static Dictionary<string, MsgListener> msgListeners = new Dictionary<string, MsgListener>();
@@ -129,7 +130,7 @@ namespace GeneralClientFramework
         }
 
         // 分发消息
-        public static void FireMsg(string name, MsgBase msg)
+        public static void FireMsg(string name, ProtoBuf.IExtensible msg)
         {
             if(msgListeners.ContainsKey(name))
             {
@@ -173,7 +174,7 @@ namespace GeneralClientFramework
             isConnecting = false;
             // 是否正在关闭
             isClosing = false;
-            msgList = new List<MsgBase>();
+            msgList = new List<ProtoBuf.IExtensible>();
             msgCount = 0;
 
             // 上一次发送Ping的时间
@@ -183,9 +184,9 @@ namespace GeneralClientFramework
 
             // 客户端可能与服务端断线重连，InitState可能被多次调用，但MsgPong协议无须多次监听，代码判断监听列表中是否以及存在MsgPong协议监听
             // 监听PONG协议
-            if (!msgListeners.ContainsKey("MsgPong"))
+            if (!msgListeners.ContainsKey(typeof(MsgPong).FullName))
             {
-                AddMsgListener("MsgPong", OnMsgPong);
+                AddMsgListener(typeof(MsgPong).FullName, OnMsgPong);
             }
         }
 
@@ -265,7 +266,7 @@ namespace GeneralClientFramework
             readBuff.readIdx += nameCount;
             // 解析协议体
             int bodyCount = bodyLength - nameCount;
-            MsgBase msg = MsgBase.Decode(protoName, readBuff.bytes, readBuff.readIdx, bodyCount);
+            ProtoBuf.IExtensible msg = MsgBase.Decode(protoName, readBuff.bytes, readBuff.readIdx, bodyCount);
             readBuff.readIdx += bodyCount;
             readBuff.CheckAndMoveBytes();
             // 将接收到的内容放到消息队列中
@@ -307,7 +308,7 @@ namespace GeneralClientFramework
         }
 
         // 发送数据
-        public static void Send(MsgBase msg)
+        public static void Send(ProtoBuf.IExtensible msg)
         {
             // 判断状态
             if (socket == null || !socket.Connected)
@@ -321,6 +322,7 @@ namespace GeneralClientFramework
             // 数据编码
             byte[] nameBytes = MsgBase.EncodeName(msg);
             byte[] bodyBytes = MsgBase.Encode(msg);
+            
             int len = nameBytes.Length + bodyBytes.Length;
             byte[] sendBytes = new byte[2 + len];
             // 组装数据
@@ -328,6 +330,8 @@ namespace GeneralClientFramework
             sendBytes[1] = (byte)(len / 256);
             Array.Copy(nameBytes, 0, sendBytes, 2, nameBytes.Length);
             Array.Copy(bodyBytes, 0, sendBytes, 2 + nameBytes.Length, bodyBytes.Length);
+            Debug.Log(System.BitConverter.ToString(sendBytes));
+
             // 写入队列
             ByteArray ba = new ByteArray(sendBytes);
             int count = 0;      // writeQueue的长度
@@ -419,7 +423,7 @@ namespace GeneralClientFramework
             for(int i = 0; i < MAX_MESSAGE_FIRE; i++)
             {
                 // 获取第一条消息
-                MsgBase msgBase = null;
+                ProtoBuf.IExtensible msgBase = null;
                 lock (msgList)
                 {
                     if(msgList.Count > 0)
@@ -433,7 +437,7 @@ namespace GeneralClientFramework
                 // 分发消息
                 if(msgBase != null)
                 {
-                    FireMsg(msgBase.protoName, msgBase);
+                    FireMsg(msgBase.ToString(), msgBase);
                 }
                 // 没有消息了
                 else
@@ -444,7 +448,7 @@ namespace GeneralClientFramework
         }
 
         // 监听PONG协议，负责更新lastPongTime
-        private static void OnMsgPong(MsgBase msgBase)
+        private static void OnMsgPong(ProtoBuf.IExtensible msgBase)
         {
             lastPongTime = Time.time; ;
         }

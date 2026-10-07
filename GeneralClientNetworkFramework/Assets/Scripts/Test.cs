@@ -1,4 +1,5 @@
 using System.Security.Cryptography;
+using proto.BattleMsg;
 using UnityEngine;
 
 namespace GeneralClientFramework
@@ -11,7 +12,7 @@ namespace GeneralClientFramework
             NetManager.AddEventListener(NetEvent.ConnectSucc, OnConnectSucc);
             NetManager.AddEventListener(NetEvent.ConnectFail, OnConnectFail);
             NetManager.AddEventListener(NetEvent.Cloas, OnConnectClose);
-            NetManager.AddMsgListener("MsgMove", OnMsgMove);
+            NetManager.AddMsgListener(typeof(MsgMove).FullName, OnMsgMove);
 
         }
 
@@ -63,7 +64,7 @@ namespace GeneralClientFramework
         }
 
         // 接收OnMsgMove协议
-        public void OnMsgMove(MsgBase msgBase)
+        public void OnMsgMove(ProtoBuf.IExtensible msgBase)
         {
             MsgMove msg = msgBase as MsgMove;
             // 消息处理
