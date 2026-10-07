@@ -39,6 +39,15 @@ namespace GeneralClientFramework
         // 每次Update时处理的消息量
         readonly static int MAX_MESSAGE_FIRE = 10;
 
+        // 是否启用心跳
+        public static bool isUsePing = true;
+        // 心跳间隔
+        public static int pingInterval = 5;
+        // 上一次发送PING的时间
+        static float lastPingTime = 0;
+        // 上一次收到PONG的时间
+        static float lastPongTime = 0;
+
 
         // 事件委托类型
         public delegate void EventListener(string err);
@@ -166,6 +175,18 @@ namespace GeneralClientFramework
             isClosing = false;
             msgList = new List<MsgBase>();
             msgCount = 0;
+
+            // 上一次发送Ping的时间
+            lastPingTime = Time.time;
+            // 上一次收到Pong的时间
+            lastPongTime = Time.time;
+
+            // 客户端可能与服务端断线重连，InitState可能被多次调用，但MsgPong协议无须多次监听，代码判断监听列表中是否以及存在MsgPong协议监听
+            // 监听PONG协议
+            if (!msgListeners.ContainsKey("MsgPong"))
+            {
+                AddMsgListener("MsgPong", OnMsgPong);
+            }
         }
 
         private static void ConnectCallback(IAsyncResult ar)
@@ -361,6 +382,31 @@ namespace GeneralClientFramework
             }
         }
 
+
+        // 发送PING协议
+        private static void PingUpdate()
+        {
+            // 是否启用
+            if (!isUsePing)
+            {
+                return;
+            }
+            // 发送PING
+            if(Time.time - lastPingTime > pingInterval)
+            {
+                MsgPing msgPing = new MsgPing();
+                Send(msgPing);
+                lastPingTime = Time.time;
+            }
+            // 检查PONG时间
+            if(Time.time - lastPongTime > pingInterval * 4)
+            {
+                Close();
+            }
+        }
+
+
+
         // 更新消息
         public static void MsgUpdate()
         {
@@ -397,10 +443,17 @@ namespace GeneralClientFramework
             }
         }
 
+        // 监听PONG协议，负责更新lastPongTime
+        private static void OnMsgPong(MsgBase msgBase)
+        {
+            lastPongTime = Time.time; ;
+        }
+
         // Update
         public static void Update()
         {
             MsgUpdate();
+            PingUpdate();
         }
     }
 }
