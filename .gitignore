@@ -1,10 +1,13 @@
-/Library
-/Logs
-/Temp
-/UserSettings
-/obj
+/GeneralClientNetworkFramework/Library
+/GeneralClientNetworkFramework/Logs
+/GeneralClientNetworkFramework/Temp
+/GeneralClientNetworkFramework/UserSettings
+/GeneralClientNetworkFramework/obj
 /.idea
 
+
+/GeneralServerFramework/src/obj
+/GeneralServerFramework/src/bin
 
 
 .vsconfig
